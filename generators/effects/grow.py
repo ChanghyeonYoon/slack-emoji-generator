@@ -43,8 +43,9 @@ class GrowEffect(BaseEffect):
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
             
-            x = (self.size - text_width) // 2
-            y = (self.size - text_height) // 2
+            # Subtract bbox offsets to properly center the actual text
+            x = (self.size - text_width) // 2 - bbox[0]
+            y = (self.size - text_height) // 2 - bbox[1]
             
             draw.text((x, y), self.text, font=sized_font, fill=self.text_color)
             frames.append(img)

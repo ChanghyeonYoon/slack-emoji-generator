@@ -32,9 +32,13 @@ class TypingEffect(BaseEffect):
             draw = ImageDraw.Draw(img)
             
             # Calculate position (left-aligned for typing effect)
-            text_width, text_height = self._get_text_size(display_text)
-            x = (self.size - self._get_full_text_width()) // 2
-            y = (self.size - text_height) // 2
+            text_bbox = self._get_text_bbox(display_text)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+            
+            full_bbox = self._get_full_text_bbox()
+            x = (self.size - (full_bbox[2] - full_bbox[0])) // 2 - full_bbox[0]
+            y = (self.size - text_height) // 2 - text_bbox[1]
             
             draw.text((x, y), display_text, font=self.font, fill=self.text_color)
             
@@ -64,16 +68,24 @@ class TypingEffect(BaseEffect):
                     char_count += 1
         return "".join(result)
     
-    def _get_text_size(self, text: str):
-        """Get size of specific text."""
+    def _get_text_bbox(self, text: str):
+        """Get bounding box of specific text."""
         temp_img = Image.new("RGBA", (1, 1))
         draw = ImageDraw.Draw(temp_img)
-        bbox = draw.textbbox((0, 0), text, font=self.font)
+        return draw.textbbox((0, 0), text, font=self.font)
+    
+    def _get_text_size(self, text: str):
+        """Get size of specific text."""
+        bbox = self._get_text_bbox(text)
         return (bbox[2] - bbox[0], bbox[3] - bbox[1])
+    
+    def _get_full_text_bbox(self):
+        """Get bounding box of full text."""
+        temp_img = Image.new("RGBA", (1, 1))
+        draw = ImageDraw.Draw(temp_img)
+        return draw.textbbox((0, 0), self.text, font=self.font)
     
     def _get_full_text_width(self) -> int:
         """Get width of full text."""
-        temp_img = Image.new("RGBA", (1, 1))
-        draw = ImageDraw.Draw(temp_img)
-        bbox = draw.textbbox((0, 0), self.text, font=self.font)
+        bbox = self._get_full_text_bbox()
         return bbox[2] - bbox[0]

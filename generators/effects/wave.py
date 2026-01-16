@@ -32,13 +32,14 @@ class WaveEffect(BaseEffect):
                 phase = (2 * math.pi * frame_idx / self.frame_count) + (char_idx * 0.5)
                 y_offset = int(math.sin(phase) * wave_amplitude)
                 
-                # Get character width
+                # Get character bounding box
                 char_bbox = draw.textbbox((0, 0), char, font=self.font)
                 char_width = char_bbox[2] - char_bbox[0]
+                char_height = char_bbox[3] - char_bbox[1]
                 
                 # Calculate y position (centered + wave offset)
-                text_height = char_bbox[3] - char_bbox[1]
-                y = (self.size - text_height) // 2 + y_offset
+                # Subtract char_bbox[1] to account for top offset
+                y = (self.size - char_height) // 2 - char_bbox[1] + y_offset
                 
                 draw.text((current_x, y), char, font=self.font, fill=self.text_color)
                 current_x += char_width

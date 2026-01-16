@@ -24,7 +24,12 @@ class ScrollEffect(BaseEffect):
         """Generate frames with horizontally scrolling text."""
         frames = []
         
-        text_width, text_height = self.get_text_size()
+        # Get full bounding box for accurate positioning
+        temp_img = Image.new("RGBA", (1, 1))
+        temp_draw = ImageDraw.Draw(temp_img)
+        bbox = temp_draw.textbbox((0, 0), self.text, font=self.font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
         
         # Total width of all tiles combined
         total_canvas_width = self.size * self.total_tiles
@@ -34,8 +39,9 @@ class ScrollEffect(BaseEffect):
         # End: text completely off left (x = -text_width)
         total_scroll_distance = total_canvas_width + text_width
         
-        # Center text vertically
-        y = (self.size - text_height) // 2
+        # Center text vertically, accounting for bbox top offset
+        # bbox[1] is the top offset - we subtract it to properly center the actual text
+        y = (self.size - text_height) // 2 - bbox[1]
         
         for i in range(self.frame_count):
             img = Image.new("RGBA", (self.size, self.size), self.bg_color)
@@ -74,8 +80,8 @@ class ScrollEffect(BaseEffect):
         Returns:
             List of (image_bytes, extension, tile_index) tuples
         """
-        # Number of tiles based on text length (minimum 2 for short text)
-        total_tiles = max(len(text), 2)
+        # Number of tiles based on text length (minimum 2, maximum 10)
+        total_tiles = min(max(len(text), 2), 10)
         
         results = []
         for tile_idx in range(total_tiles):

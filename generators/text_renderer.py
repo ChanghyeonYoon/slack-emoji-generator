@@ -103,12 +103,14 @@ class TextRenderer:
         img = Image.new("RGBA", (size, size), bg_color)
         draw = ImageDraw.Draw(img)
         
-        # Calculate text size
-        text_width, text_height = self.get_text_size(text, font)
+        # Get full bounding box for accurate positioning
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
         
-        # Center text with offsets
-        x = (size - text_width) // 2 + x_offset
-        y = (size - text_height) // 2 + y_offset
+        # Center text with offsets, accounting for bbox offsets
+        x = (size - text_width) // 2 - bbox[0] + x_offset
+        y = (size - text_height) // 2 - bbox[1] + y_offset
         
         # Draw text
         draw.text((x, y), text, font=font, fill=text_color)

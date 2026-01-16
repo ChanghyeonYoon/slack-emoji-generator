@@ -107,11 +107,20 @@ class BaseEffect(ABC):
         
         return buffer.getvalue()
     
-    def get_text_size(self) -> Tuple[int, int]:
-        """Calculate text dimensions."""
+    def get_text_bbox(self) -> Tuple[int, int, int, int]:
+        """
+        Get full text bounding box.
+        
+        Returns:
+            Tuple of (left, top, right, bottom) offsets
+        """
         temp_img = Image.new("RGBA", (1, 1))
         draw = ImageDraw.Draw(temp_img)
-        bbox = draw.textbbox((0, 0), self.text, font=self.font)
+        return draw.textbbox((0, 0), self.text, font=self.font)
+    
+    def get_text_size(self) -> Tuple[int, int]:
+        """Calculate text dimensions."""
+        bbox = self.get_text_bbox()
         return (bbox[2] - bbox[0], bbox[3] - bbox[1])
     
     def create_frame(
@@ -131,9 +140,14 @@ class BaseEffect(ABC):
         img = Image.new("RGBA", (self.size, self.size), self.bg_color)
         draw = ImageDraw.Draw(img)
         
-        text_width, text_height = self.get_text_size()
-        x = (self.size - text_width) // 2 + x_offset
-        y = (self.size - text_height) // 2 + y_offset
+        bbox = self.get_text_bbox()
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        # Center text properly by accounting for bbox offsets
+        # bbox[0] is left offset, bbox[1] is top offset
+        x = (self.size - text_width) // 2 - bbox[0] + x_offset
+        y = (self.size - text_height) // 2 - bbox[1] + y_offset
         
         color = color_override or self.text_color
         draw.text((x, y), self.text, font=self.font, fill=color)
