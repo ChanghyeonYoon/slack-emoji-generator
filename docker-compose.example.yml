@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: slack-emoji-bot
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      # Socket Mode (WebSocket)
+      - USE_SOCKET_MODE=${USE_SOCKET_MODE:-true}
+      # Database
+      - DATABASE_URL=mysql+pymysql://${MYSQL_USER:-emoji}:${MYSQL_PASSWORD:-emoji123}@mysql:3306/${MYSQL_DATABASE:-slack_emoji}
+      # OAuth (optional)
+      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI}
+      - OAUTH_INSTALL_URL=${OAUTH_INSTALL_URL}
+      # Datadog APM Configuration (optional)
+      - DD_AGENT_HOST=emoji-dd-agent
+      - DD_TRACE_AGENT_PORT=8136
+      - DD_SERVICE=slack-emoji-bot
+      - DD_ENV=${DD_ENV:-production}
+      - DD_VERSION=${DD_VERSION:-1.0.0}
+      - DD_LOGS_INJECTION=true
+      - DD_TRACE_SAMPLE_RATE=1.0
+      - DD_PROFILING_ENABLED=true
+      - DD_TRACE_DEBUG=false
+      - DD_TRACE_LOG_LEVEL=ERROR
+      - DD_REMOTE_CONFIGURATION_ENABLED=false
+      - DD_APPSEC_ENABLED=false
+    volumes:
+      - ./fonts:/app/fonts:ro
+      - ./static:/app/static
+    depends_on:
+      mysql:
+        condition: service_healthy
+      emoji-dd-agent:
+        condition: service_started
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "python", "service": "slack-emoji-bot"}]'
+    networks:
+      - emoji-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: slack-emoji-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-slack_emoji}
+      - MYSQL_USER=${MYSQL_USER:-emoji}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-emoji123}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - emoji-network
+
+  # Datadog Agent (optional - remove if not using Datadog)
+  emoji-dd-agent:
+    image: gcr.io/datadoghq/agent:latest
+    container_name: emoji-dd-agent
+    restart: unless-stopped
+    ports:
+      - "8136:8136/tcp"
+      - "8135:8135/udp"
+    environment:
+      TZ: Asia/Seoul
+      # Datadog API Key - GET FROM https://app.datadoghq.com/organization-settings/api-keys
+      DD_API_KEY: ${DD_API_KEY}
+      DD_SITE: datadoghq.com
+      DD_HOSTNAME: ${DD_HOSTNAME:-slack-emoji-bot}
+      DD_TAGS: "env:production"
+      # Host metrics
+      HOST_PROC: /host/proc
+      HOST_SYS: /host/sys
+      HOST_ROOT: /host/root
+      HOST_ETC: /host/etc
+      # APM
+      DD_APM_ENABLED: "true"
+      DD_APM_NON_LOCAL_TRAFFIC: "true"
+      DD_APM_RECEIVER_PORT: 8136
+      # Logs
+      DD_LOGS_ENABLED: "true"
+      DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL: "true"
+      DD_AC_EXCLUDE: "name:emoji-dd-agent"
+      # DogStatsD
+      DD_DOGSTATSD_NON_LOCAL_TRAFFIC: "true"
+      DD_DOGSTATSD_PORT: 8135
+      # Process monitoring
+      DD_PROCESS_AGENT_ENABLED: "true"
+      # Docker integration
+      DD_DOCKER_ENABLED: "true"
+      DD_CONTAINER_EXCLUDE: "name:emoji-dd-agent"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+    cap_add:
+      - SYS_PTRACE
+    networks:
+      - emoji-network
+
+volumes:
+  mysql_data:
+
+networks:
+  emoji-network:
+    driver: bridge
